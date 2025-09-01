@@ -1,0 +1,77 @@
+version: "3.9"
+
+services:
+  grafana:
+    image: grafana/grafana:12.1.1
+    container_name: grafana
+    ports: ["3000:3000"]
+    env_file: [.env]
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus, loki, tempo]
+
+  loki:
+    image: grafana/loki:3.5.0
+    container_name: loki
+    command: ["-config.file=/etc/loki/config/loki-config.yml"]
+    ports: ["3100:3100"]
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/config/loki-config.yml:ro
+      - loki-data:/loki
+
+  tempo:
+    image: grafana/tempo:2.8.2
+    container_name: tempo
+    command: ["-config.file=/etc/tempo/config/tempo-config.yml"]
+    ports: ["3200:3200", "4317:4317", "4318:4318"]
+    volumes:
+      - ./tempo/tempo-config.yml:/etc/tempo/config/tempo-config.yml:ro
+      - tempo-data:/var/tempo
+
+  prometheus:
+    image: prom/prometheus:v2.53.5
+    container_name: prometheus
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=1d"]
+    ports: ["9090:9090"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prom-data:/prometheus
+
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:0.133.0
+    container_name: otelcol
+    command: ["--config=/etc/otelcol/otelcol-config.yml"]
+    ports: ["4317:4317", "4318:4318", "8889:8889"]
+    volumes:
+      - ./otel-collector/otelcol-config.yml:/etc/otelcol/otelcol-config.yml:ro
+    depends_on: [loki, tempo]
+
+  app:
+    build: ./app
+    container_name: space-app
+    environment:
+      OTEL_SERVICE_NAME: space-app
+      OTEL_RESOURCE_ATTRIBUTES: service.version=1.0.0,service.namespace=demo,service.instance.id=${HOSTNAME:-container}
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4318
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+    ports: ["8000:8000"]
+    depends_on: [otelcol]
+
+  loadgen:
+    image: python:3.12-slim
+    container_name: loadgen
+    working_dir: /app
+    command: ["python", "loadgen.py"]
+    volumes:
+      - ./app/loadgen.py:/app/loadgen.py:ro
+    environment:
+      TARGET_BASE_URL: http://app:8000
+
+volumes:
+  loki-data:
+  tempo-data:
+  prom-data:

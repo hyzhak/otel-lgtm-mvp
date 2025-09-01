@@ -1,0 +1,27 @@
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+        grpc:
+          endpoint: 0.0.0.0:4317
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/traces
+
+compactor:
+  compaction:
+    block_retention: 24h
+
+query_frontend:
+  search:
+    concurrent_jobs: 2
+  trace_by_id:
+    query_timeout: 60s
