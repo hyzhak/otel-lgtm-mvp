@@ -17,8 +17,8 @@ from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 
-from opentelemetry.sdk.logs import LoggerProvider, LoggingHandler
-from opentelemetry.sdk.logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 
 SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME", "space-app")
@@ -61,7 +61,7 @@ async def root():
     start = time.perf_counter()
     with tracer.start_as_current_span("root-handler") as span:
         span.set_attribute("endpoint", "/")
-        log.info("hello from space-app", extra={"trace_id": span.get_span_context().trace_id})
+        log.info("hello from space-app", extra={"trace_id": trace.format_trace_id(span.get_span_context().trace_id)})
         body = {"ok": True, "msg": "Hello from space-app"}
     elapsed_ms = (time.perf_counter() - start) * 1000
     req_counter.add(1)
@@ -77,7 +77,7 @@ async def work(ms: Optional[int] = 200):
         # simulate work
         time.sleep(max(0, ms) / 1000.0)
         if random.random() < 0.05:
-            log.warning("intermittent issue observed", extra={"trace_id": span.get_span_context().trace_id})
+            log.warning("intermittent issue observed", extra={"trace_id": trace.format_trace_id(span.get_span_context().trace_id)})
     elapsed_ms = (time.perf_counter() - start) * 1000
     req_counter.add(1, {"route": "/work"})
     latency_hist.record(elapsed_ms, {"route": "/work"})
@@ -88,5 +88,5 @@ async def error():
     with tracer.start_as_current_span("boom") as span:
         span.set_attribute("endpoint", "/error")
         err_counter.add(1, {"route": "/error"})
-        log.error("boom: user-triggered error", extra={"trace_id": span.get_span_context().trace_id})
+        log.error("boom: user-triggered error", extra={"trace_id": trace.format_trace_id(span.get_span_context().trace_id)})
         raise HTTPException(status_code=500, detail="boom")

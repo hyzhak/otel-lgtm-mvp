@@ -24,7 +24,7 @@ services:
     image: grafana/tempo:2.8.2
     container_name: tempo
     command: ["-config.file=/etc/tempo/config/tempo-config.yml"]
-    ports: ["3200:3200", "4317:4317", "4318:4318"]
+    ports: ["3200:3200"]
     volumes:
       - ./tempo/tempo-config.yml:/etc/tempo/config/tempo-config.yml:ro
       - tempo-data:/var/tempo
@@ -63,11 +63,7 @@ services:
 
   loadgen:
     build: ./loadgen
-    container_name: loadgen`
-    working_dir: /loadgen
-    command: ["python", "loadgen.py"]
-    volumes:
-      - ./loadgen/loadgen.py:/app/loadgen.py:ro
+    container_name: loadgen
     environment:
       TARGET_BASE_URL: http://app:8000
 
