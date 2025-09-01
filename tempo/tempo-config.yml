@@ -24,4 +24,6 @@ query_frontend:
   search:
     concurrent_jobs: 2
   trace_by_id:
-    query_timeout: 60s
+    query_shards: 50          # ✅ must be >= 2
+    concurrent_shards: 0      # 0 → use query_shards; or set 4/8/etc explicitly
+    # remove any query_timeout here (unsupported)

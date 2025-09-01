@@ -1,3 +1,10 @@
+# Minimal single-binary Loki 3.x for local filesystem storage + TSDB index
+
+auth_enabled: false 
+
+common:
+  path_prefix: /loki  # satisfies TSDB index requirements
+
 server:
   http_listen_port: 3100
   grpc_listen_port: 0
@@ -10,7 +17,7 @@ ingester:
       replication_factor: 1
   chunk_idle_period: 1h
   chunk_target_size: 1536000
-  # NOTE: removed: max_transfer_retries (invalid in this version)
+  # NOTE: removed: max_transfer_retries (deprecated/invalid)
 
 schema_config:
   configs:
@@ -25,13 +32,18 @@ schema_config:
 storage_config:
   filesystem:
     directory: /loki/chunks
+  tsdb_shipper:
+    active_index_directory: /loki/tsdb-shipper-active
+    cache_location: /loki/tsdb-shipper-cache
+    # NOTE: do not set shared_store here; not needed for filesystem
 
 limits_config:
   allow_structured_metadata: true
+  volume_enabled: true      # 👈 required for Log Volume UI to work
 
 compactor:
   working_directory: /loki/compactor
-  # NOTE: removed: shared_store (invalid in this version)
+  # NOTE: removed: shared_store (deprecated/invalid)
   compactor_ring:
     kvstore:
       store: inmemory

@@ -33,4 +33,5 @@ datasources:
         spanStartTimeShift: "-10m"
         spanEndTimeShift: "10m"
         filterByTraceID: true
-        filterBySpanID: false
+      useGRPC: false       # 👈 force HTTP
+      # (optional) httpMethod: GET

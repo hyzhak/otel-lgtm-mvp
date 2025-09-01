@@ -62,12 +62,12 @@ services:
     depends_on: [otelcol]
 
   loadgen:
-    image: python:3.12-slim
-    container_name: loadgen
-    working_dir: /app
+    build: ./loadgen
+    container_name: loadgen`
+    working_dir: /loadgen
     command: ["python", "loadgen.py"]
     volumes:
-      - ./app/loadgen.py:/app/loadgen.py:ro
+      - ./loadgen/loadgen.py:/app/loadgen.py:ro
     environment:
       TARGET_BASE_URL: http://app:8000
 
