@@ -50,6 +50,12 @@ services:
   app:
     build: ./app
     container_name: space-app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 10s
     environment:
       OTEL_SERVICE_NAME: space-app
       OTEL_RESOURCE_ATTRIBUTES: service.version=1.0.0,service.namespace=demo,service.instance.id=${HOSTNAME:-container}
@@ -65,7 +71,10 @@ services:
     build: ./loadgen
     container_name: loadgen
     environment:
-      TARGET_BASE_URL: http://app:8000
+      TARGET_BASE_URL: http://space-app:8000
+    depends_on:
+      app:
+        condition: service_healthy
 
 volumes:
   loki-data:

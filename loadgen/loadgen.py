@@ -11,14 +11,17 @@ while True:
         p = random.random()
         if p < 0.01:
             httpx.get(f"{BASE}/error", timeout=5)
-            print('Error request')
+            print("Error request")
         elif p < 0.20:
             ms = random.randint(100, 500)
             httpx.get(f"{BASE}/work", params={"ms": ms}, timeout=5)
-            print(f'Work request: {ms}ms')
+            print(f"Work request: {ms}ms")
         else:
             httpx.get(f"{BASE}/", timeout=5)
-            print('Normal request')
+            print("Normal request")
     except Exception as e:
+        print(f'BASE={BASE}')
         print(f"Error occurred: {e}")
+        print(e)
+        # raise
     time.sleep(0.4)
