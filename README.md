@@ -30,8 +30,15 @@ The system follows a microservices architecture with the following components:
 
 ### Data Flow
 
-```
-Application (FastAPI) → OpenTelemetry Collector → Backends (Prometheus/Tempo/Loki) → Grafana
+```mermaid
+flowchart LR
+    A[Application<br/>FastAPI] --> B[OpenTelemetry<br/>Collector]
+    B --> C[Prometheus<br/>Metrics]
+    B --> D[Tempo<br/>Traces]
+    B --> E[Loki<br/>Logs]
+    C --> F[Grafana<br/>Visualization]
+    D --> F
+    E --> F
 ```
 
 1. The FastAPI application generates telemetry data through OpenTelemetry instrumentation
@@ -46,7 +53,9 @@ Application (FastAPI) → OpenTelemetry Collector → Backends (Prometheus/Tempo
 - Docker and Docker Compose (or Podman and Podman Compose)
 - Git
 
-### Using Docker Compose
+### Steps to Run
+
+This setup works with both Docker Compose and Podman Compose. Use `docker-compose` or `podman-compose` commands as appropriate for your environment.
 
 1. **Clone the repository**:
 
@@ -59,38 +68,7 @@ Application (FastAPI) → OpenTelemetry Collector → Backends (Prometheus/Tempo
 
    ```bash
    docker-compose up -d
-   ```
-
-3. **Access the services**:
-
-   - **Grafana Dashboard**: http://localhost:3000 (default credentials: admin/admin)
-   - **FastAPI Application**: http://localhost:8000
-   - **Prometheus**: http://localhost:9090
-   - **Tempo**: http://localhost:3200
-   - **Loki**: http://localhost:3100
-
-4. **View telemetry data**:
-
-   - Open Grafana and explore the pre-configured dashboard
-   - Check application logs and metrics in their respective interfaces
-
-5. **Stop the services**:
-   ```bash
-   docker-compose down
-   ```
-
-### Using Podman Compose
-
-1. **Clone the repository**:
-
-   ```bash
-   git clone <repository-url>
-   cd otel-lgtm-mvp
-   ```
-
-2. **Start the services**:
-
-   ```bash
+   # or
    podman-compose up -d
    ```
 
@@ -109,6 +87,8 @@ Application (FastAPI) → OpenTelemetry Collector → Backends (Prometheus/Tempo
 
 5. **Stop the services**:
    ```bash
+   docker-compose down
+   # or
    podman-compose down
    ```
 
