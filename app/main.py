@@ -98,7 +98,7 @@ async def root():
         )
         body = {"ok": True, "msg": "Hello from space-app"}
     elapsed_ms = (time.perf_counter() - start) * 1000
-    req_counter.add(1)
+    req_counter.add(1, {"route": "/"})
     latency_hist.record(elapsed_ms, {"route": "/"})
     return JSONResponse(body)
 
@@ -137,6 +137,7 @@ async def work(ms: Optional[int] = 200):
 
 @app.get("/error")
 async def error():
+    start = time.perf_counter()
     current = get_current_span()
     ctx = current.get_span_context()
     log.info(
@@ -147,14 +148,19 @@ async def error():
             "is_valid": ctx.is_valid,
         },
     )
-    with tracer.start_as_current_span("boom") as span:
-        span.set_attribute("endpoint", "/error")
-        err_counter.add(1, {"route": "/error"})
-        log.error(
-            "boom: user-triggered error",
-            extra={"trace_id": trace.format_trace_id(span.get_span_context().trace_id)},
-        )
-        raise HTTPException(status_code=500, detail="boom")
+    try:
+        with tracer.start_as_current_span("boom") as span:
+            span.set_attribute("endpoint", "/error")
+            err_counter.add(1, {"route": "/error"})
+            log.error(
+                "boom: user-triggered error",
+                extra={"trace_id": trace.format_trace_id(span.get_span_context().trace_id)},
+            )
+            raise HTTPException(status_code=500, detail="boom")
+    finally:
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        req_counter.add(1, {"route": "/error"})
+        latency_hist.record(elapsed_ms, {"route": "/error"})
 
 
 def _normalize_delay_ms(ms: Optional[int]) -> int:
