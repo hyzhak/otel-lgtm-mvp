@@ -103,18 +103,6 @@ async def root():
     return JSONResponse(body)
 
 
-def _normalize_delay_ms(ms: Optional[int]) -> int:
-    """Validate the requested work duration and return milliseconds."""
-
-    if ms is None:
-        return 200
-
-    if ms < 0:
-        raise HTTPException(status_code=400, detail="ms must be non-negative")
-
-    return ms
-
-
 @app.get("/work")
 async def work(ms: Optional[int] = 200):
     start = time.perf_counter()
@@ -167,3 +155,15 @@ async def error():
             extra={"trace_id": trace.format_trace_id(span.get_span_context().trace_id)},
         )
         raise HTTPException(status_code=500, detail="boom")
+
+
+def _normalize_delay_ms(ms: Optional[int]) -> int:
+    """Validate the requested work duration and return milliseconds."""
+
+    if ms is None:
+        return 200
+
+    if ms < 0:
+        raise HTTPException(status_code=400, detail="ms must be non-negative")
+
+    return ms
