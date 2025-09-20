@@ -103,6 +103,18 @@ async def root():
     return JSONResponse(body)
 
 
+def _normalize_delay_ms(ms: Optional[int]) -> int:
+    """Validate the requested work duration and return milliseconds."""
+
+    if ms is None:
+        return 200
+
+    if ms < 0:
+        raise HTTPException(status_code=400, detail="ms must be non-negative")
+
+    return ms
+
+
 @app.get("/work")
 async def work(ms: Optional[int] = 200):
     start = time.perf_counter()
@@ -116,11 +128,12 @@ async def work(ms: Optional[int] = 200):
             "is_valid": ctx.is_valid,
         },
     )
+    delay_ms = _normalize_delay_ms(ms)
     with tracer.start_as_current_span("compute") as span:
         span.set_attribute("endpoint", "/work")
-        span.set_attribute("work.ms", ms)
+        span.set_attribute("work.ms", delay_ms)
         # simulate work without blocking the event loop
-        await asyncio.sleep(max(0, ms) / 1000.0)
+        await asyncio.sleep(delay_ms / 1000.0)
         if random.random() < 0.05:
             log.warning(
                 "intermittent issue observed",
@@ -131,7 +144,7 @@ async def work(ms: Optional[int] = 200):
     elapsed_ms = (time.perf_counter() - start) * 1000
     req_counter.add(1, {"route": "/work"})
     latency_hist.record(elapsed_ms, {"route": "/work"})
-    return {"ok": True, "work_ms": ms, "latency_ms": round(elapsed_ms, 2)}
+    return {"ok": True, "work_ms": delay_ms, "latency_ms": round(elapsed_ms, 2)}
 
 
 @app.get("/error")
