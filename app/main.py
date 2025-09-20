@@ -1,7 +1,8 @@
+import asyncio
+import logging
 import os
 import random
 import time
-import logging
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
@@ -118,8 +119,8 @@ async def work(ms: Optional[int] = 200):
     with tracer.start_as_current_span("compute") as span:
         span.set_attribute("endpoint", "/work")
         span.set_attribute("work.ms", ms)
-        # simulate work
-        time.sleep(max(0, ms) / 1000.0)
+        # simulate work without blocking the event loop
+        await asyncio.sleep(max(0, ms) / 1000.0)
         if random.random() < 0.05:
             log.warning(
                 "intermittent issue observed",
