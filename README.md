@@ -64,7 +64,35 @@ This setup works with both Docker Compose and Podman Compose. Use `docker-compos
    cd otel-lgtm-mvp
    ```
 
-2. **Start the services**:
+2. **Configure environment variables (optional but recommended)**:
+
+   Copy the sample configuration and edit it to suit your environment:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Update the values in `.env` before starting the stack:
+
+   - `GF_SECURITY_ADMIN_USER`: Admin username for Grafana. The example file
+     uses `admin` for quick local testing. In production choose a unique,
+     non-default username to minimize brute-force attacks.
+   - `GF_SECURITY_ADMIN_PASSWORD`: Admin password for Grafana. Keep `admin`
+     only for development demos. Always set a strong, unique password in
+     production.
+   - `GF_USERS_ALLOW_SIGN_UP`: Controls whether self-service user sign-up is
+     allowed. Leave set to `false` for both development and production unless
+     you intentionally want anyone with access to create an account.
+   - `GF_AUTH_ANONYMOUS_ENABLED`: Enables anonymous (no login) dashboard
+     access. Keeping it `true` simplifies demos and local exploration. Switch
+     it to `false` in production unless the dashboards are meant for public
+     viewing.
+   - `GF_AUTH_ANONYMOUS_ORG_ROLE`: Role assigned to anonymous users. `Viewer`
+     grants read-only access and is appropriate for development. In production
+     you can keep `Viewer`, lower permissions, or disable anonymous access
+     entirely depending on your security requirements.
+
+3. **Start the services**:
 
    ```bash
    docker-compose up -d
@@ -72,7 +100,7 @@ This setup works with both Docker Compose and Podman Compose. Use `docker-compos
    podman-compose up -d
    ```
 
-3. **Access the services**:
+4. **Access the services**:
 
    - **Grafana Dashboard**: http://localhost:3000 (default credentials: admin/admin)
    - **FastAPI Application**: http://localhost:8000
@@ -80,12 +108,12 @@ This setup works with both Docker Compose and Podman Compose. Use `docker-compos
    - **Tempo**: http://localhost:3200
    - **Loki**: http://localhost:3100
 
-4. **View telemetry data**:
+5. **View telemetry data**:
 
    - Open Grafana and explore the pre-configured dashboard
    - Check application logs and metrics in their respective interfaces
 
-5. **Stop the services**:
+6. **Stop the services**:
    ```bash
    docker-compose down
    # or
