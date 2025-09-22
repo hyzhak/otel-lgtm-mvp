@@ -33,13 +33,14 @@ jobs:
         uses: helm/kind-action@v1
         with:
           wait: 120s
+          cluster_name: otel-lgtm
 
       - name: Build demo images for local overlay
         run: |
           docker build -t space-app:latest app
           docker build -t loadgen:latest loadgen
-          kind load docker-image space-app:latest
-          kind load docker-image loadgen:latest
+          kind load docker-image space-app:latest --name otel-lgtm
+          kind load docker-image loadgen:latest --name otel-lgtm
 
       - name: Deploy observability stack to kind
         run: |
