@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: space-app
+spec:
+  template:
+    spec:
+      containers:
+        - name: space-app
+          imagePullPolicy: Never
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgen
+spec:
+  template:
+    spec:
+      containers:
+        - name: loadgen
+          imagePullPolicy: Never

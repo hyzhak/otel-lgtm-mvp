@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: observability
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: grafana-provisioning
+    files:
+      - files/grafana/provisioning/datasources/datasources.yml
+      - files/grafana/provisioning/alerting/alerts.yml
+      - files/grafana/provisioning/dashboards/dashboards.yml
+  - name: grafana-dashboards
+    files:
+      - files/grafana/dashboards/otel_mvp.json
+  - name: loki-config
+    files:
+      - files/loki/loki-config.yml
+  - name: tempo-config
+    files:
+      - files/tempo/tempo-config.yml
+  - name: prometheus-config
+    files:
+      - files/prometheus/prometheus.yml
+  - name: otelcol-config
+    files:
+      - files/otel-collector/otelcol-config.yml
+
+secretGenerator:
+  - name: grafana-admin
+    literals:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+resources:
+  - namespace.yaml
+  - grafana.yaml
+  - loki.yaml
+  - tempo.yaml
+  - prometheus.yaml
+  - otelcol.yaml
+  - space-app.yaml
+  - loadgen.yaml
