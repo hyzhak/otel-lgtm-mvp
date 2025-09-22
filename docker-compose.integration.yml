@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  integration-tests:
+    build:
+      context: .
+      dockerfile: tests/integration/Dockerfile
+    container_name: integration-tests
+    volumes:
+      - ./:/workspace:rw
+    environment:
+      PYTHONUNBUFFERED: "1"
+      STACK_READY_TIMEOUT: "${STACK_READY_TIMEOUT:-180}"
+      OBS_WAIT_TIMEOUT: "${OBS_WAIT_TIMEOUT:-120}"
+    depends_on:
+      app:
+        condition: service_healthy
+      grafana:
+        condition: service_started
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
+      prometheus:
+        condition: service_started

@@ -125,3 +125,39 @@ This setup works with both Docker Compose and Podman Compose. Use `docker-compos
 - The load generator service will automatically start generating traffic to the FastAPI application
 - All services are configured to work together out of the box
 - Configuration files for each service are located in their respective directories
+
+## Integration Tests
+
+These end-to-end tests bring up the full docker-compose stack, exercise the FastAPI demo service, and assert that traces, metrics, and logs flow into Tempo, Prometheus, and Loki respectively.
+
+### Quick start
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.integration.yml up --build --exit-code-from integration-tests integration-tests
+docker compose -f docker-compose.yml -f docker-compose.integration.yml down -v
+```
+
+Using `make integration-test` wraps the same commands (set `COMPOSE=podman-compose` to run them with Podman Compose instead of Docker Compose).
+
+For Podman Compose you can run the equivalent flow:
+
+```bash
+podman-compose down -v && podman-compose up -d --build
+# give services a brief moment to settle
+sleep 4
+podman-compose -f docker-compose.yml -f docker-compose.integration.yml run --rm integration-tests
+```
+
+The test suite will:
+- run inside a disposable Python 3.12 container built from `tests/integration/Dockerfile` (dependencies baked into the image),
+- wait for Grafana, Loki, Tempo, Prometheus, and the demo app to report healthy,
+- generate sample traffic against the FastAPI app, and
+- query each backend to ensure telemetry is ingested and queryable.
+
+Set `STACK_READY_TIMEOUT` or `OBS_WAIT_TIMEOUT` (environment variables passed to the test container) to tweak readiness and observation timeouts when running on slower hardware.
+
+If you need to run the assertions against an already running stack outside of Docker Compose, override the base URLs (e.g. `APP_BASE_URL`, `GRAFANA_HEALTH_URL`) when invoking the workflow so the test container targets the correct hosts.
+
+When changing `tests/requirements-dev.txt`, rebuild the integration image with `docker compose -f docker-compose.yml -f docker-compose.integration.yml build integration-tests` (or the equivalent `podman-compose build`).
+
+The GitHub Actions workflow `.github/workflows/integration-tests.yml` runs the same compose stack on every push and pull request.
