@@ -158,6 +158,8 @@ Set `STACK_READY_TIMEOUT` or `OBS_WAIT_TIMEOUT` (environment variables passed to
 
 If you need to run the assertions against an already running stack outside of Docker Compose, override the base URLs (e.g. `APP_BASE_URL`, `GRAFANA_HEALTH_URL`) when invoking the workflow so the test container targets the correct hosts.
 
+Additional environment variables let you align the assertions with custom deployments (for example, when the service name or Loki label differs from `space-app`). Override `SERVICE_NAME`, `APP_HOST`, `PROM_EXPECTED_JOB`, or `LOKI_SERVICE_LABEL` as needed.
+
 When changing `tests/requirements-dev.txt`, rebuild the integration image with `docker compose -f docker-compose.yml -f docker-compose.integration.yml build integration-tests` (or the equivalent `podman-compose build`).
 
 The GitHub Actions workflow `.github/workflows/integration-tests.yml` runs the same compose stack on every push and pull request.

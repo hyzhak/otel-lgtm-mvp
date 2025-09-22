@@ -17,9 +17,9 @@ def telemetry_sample() -> None:
 @pytest.mark.usefixtures("telemetry_sample")
 def test_traces_ingested() -> None:
     utils.wait_until(
-        utils.tempo_has_recent_traces,
+        lambda: utils.tempo_has_recent_traces(),
         utils.OBSERVABILITY_WAIT_TIMEOUT,
-        "Tempo never returned a trace for service.name=space-app",
+        f"Tempo never returned a trace for service.name={utils.SERVICE_NAME}",
     )
 
 
@@ -27,7 +27,7 @@ def test_traces_ingested() -> None:
 @pytest.mark.usefixtures("telemetry_sample")
 def test_metrics_ingested() -> None:
     utils.wait_until(
-        utils.prometheus_has_metrics,
+        lambda: utils.prometheus_has_metrics("app_requests_total"),
         utils.OBSERVABILITY_WAIT_TIMEOUT,
         "Prometheus never returned app_requests_total metrics",
     )
@@ -37,7 +37,7 @@ def test_metrics_ingested() -> None:
 @pytest.mark.usefixtures("telemetry_sample")
 def test_logs_ingested() -> None:
     utils.wait_until(
-        utils.loki_has_logs,
+        lambda: utils.loki_has_logs(),
         utils.OBSERVABILITY_WAIT_TIMEOUT,
-        "Loki never returned logs for service_name=space-app",
+        f"Loki never returned logs for {utils.LOKI_SERVICE_LABEL}={utils.SERVICE_NAME}",
     )

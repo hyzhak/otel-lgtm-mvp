@@ -3,24 +3,28 @@ from __future__ import annotations
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional
 
 import requests
 
 STACK_READY_TIMEOUT = int(os.getenv("STACK_READY_TIMEOUT", "180"))
 OBSERVABILITY_WAIT_TIMEOUT = int(os.getenv("OBS_WAIT_TIMEOUT", "120"))
 
+SERVICE_NAME = os.getenv("SERVICE_NAME", "space-app")
+APP_HOST = os.getenv("APP_HOST", "space-app")
+
 GRAFANA_HEALTH = os.getenv("GRAFANA_HEALTH_URL", "http://grafana:3000/api/health")
 LOKI_READY = os.getenv("LOKI_READY_URL", "http://loki:3100/ready")
 TEMPO_READY = os.getenv("TEMPO_READY_URL", "http://tempo:3200/ready")
 PROM_READY = os.getenv("PROM_READY_URL", "http://prometheus:9090/-/ready")
-APP_ROOT = os.getenv("APP_BASE_URL", "http://space-app:8000")
+APP_ROOT = os.getenv("APP_BASE_URL", f"http://{APP_HOST}:8000")
 
 TEMPO_SEARCH_URL = os.getenv("TEMPO_SEARCH_URL", "http://tempo:3200/api/search")
 PROM_QUERY_URL = os.getenv("PROM_QUERY_URL", "http://prometheus:9090/api/v1/query")
 LOKI_QUERY_RANGE_URL = os.getenv("LOKI_QUERY_RANGE_URL", "http://loki:3100/loki/api/v1/query_range")
 
-PROM_EXPECTED_JOB = os.getenv("PROM_EXPECTED_JOB", "demo/space-app")
+PROM_EXPECTED_JOB = os.getenv("PROM_EXPECTED_JOB", f"demo/{SERVICE_NAME}")
+LOKI_SERVICE_LABEL = os.getenv("LOKI_SERVICE_LABEL", "service_name")
 
 
 class StackError(RuntimeError):
@@ -75,11 +79,11 @@ def exercise_application() -> None:
         assert error.status_code == 500
 
 
-def tempo_has_recent_traces() -> bool:
+def tempo_has_recent_traces(service_name: str = SERVICE_NAME) -> bool:
     window_end = datetime.now(timezone.utc)
     window_start = window_end - timedelta(minutes=5)
     payload = {
-        "query": '{ service.name = "space-app" }',
+        "query": f'{{ service.name = "{service_name}" }}',
         "start": window_start.isoformat(timespec="milliseconds"),
         "end": window_end.isoformat(timespec="milliseconds"),
         "limit": 5,
@@ -98,9 +102,23 @@ def tempo_has_recent_traces() -> bool:
     traces = data.get("traces") or data.get("data", {}).get("traces")
     return bool(traces)
 
-
-def prometheus_has_metrics() -> bool:
-    query = f'app_requests_total{{exported_job="{PROM_EXPECTED_JOB}"}}'
+def prometheus_has_metrics(
+    metric_name: str,
+    *,
+    job: Optional[str] = None,
+    labels: Optional[Dict[str, str]] = None,
+    minimum: float = 1.0,
+) -> bool:
+    selector_labels: Dict[str, str] = {}
+    if labels:
+        selector_labels.update(labels)
+    effective_job = job if job is not None else PROM_EXPECTED_JOB
+    if effective_job:
+        selector_labels.setdefault("exported_job", effective_job)
+    label_filter = ",".join(
+        f'{key}="{value}"' for key, value in sorted(selector_labels.items())
+    )
+    query = f"{metric_name}{{{label_filter}}}" if label_filter else metric_name
     response = requests.get(
         PROM_QUERY_URL,
         params={"query": query},
@@ -118,16 +136,20 @@ def prometheus_has_metrics() -> bool:
         return False
 
     try:
-        return any(float(sample["value"][1]) >= 1 for sample in results)
+        return any(float(sample["value"][1]) >= minimum for sample in results)
     except (KeyError, ValueError, TypeError):
         return False
 
 
-def loki_has_logs() -> bool:
+def loki_has_logs(
+    *,
+    service_name: str = SERVICE_NAME,
+    label_key: str = LOKI_SERVICE_LABEL,
+) -> bool:
     window_end = datetime.now(timezone.utc)
     window_start = window_end - timedelta(minutes=5)
     params = {
-        "query": '{service_name="space-app"}',
+        "query": f'{{{label_key}="{service_name}"}}',
         "start": str(int(window_start.timestamp() * 1e9)),
         "end": str(int(window_end.timestamp() * 1e9)),
         "limit": "20",
