@@ -32,7 +32,7 @@ jobs:
       - name: Create kind cluster
         uses: helm/kind-action@v1
         with:
-          wait: true
+          wait: 120s
 
       - name: Build demo images for local overlay
         run: |
