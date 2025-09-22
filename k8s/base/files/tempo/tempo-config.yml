@@ -43,7 +43,7 @@ metrics_generator:
   registry:
     external_labels: # Labels attached to generated metrics (use meaningful cluster/service labels in prod)
       source: tempo
-      cluster: docker-compose
+      cluster: demo
   storage:
     path: /var/tempo/generator/wal
     remote_write: # Sends generated metrics to Prometheus via remote_write (ensure correct Prometheus URL and auth in prod)

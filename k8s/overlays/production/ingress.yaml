@@ -4,11 +4,12 @@ metadata:
   name: grafana
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-production
+# Replace example.com with real hostnames before deploying to a cluster.
 spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - grafana.example.com
+        - grafana.example.com # placeholder hostname
       secretName: grafana-tls
   rules:
     - host: grafana.example.com
@@ -32,7 +33,7 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - app.example.com
+        - app.example.com # placeholder hostname
       secretName: space-app-tls
   rules:
     - host: app.example.com
