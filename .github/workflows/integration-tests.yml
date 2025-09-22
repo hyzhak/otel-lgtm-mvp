@@ -1,0 +1,24 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare environment variables for CI
+        run: |
+          if [ ! -f .env ] && [ -f .env.example ]; then
+            cp .env.example .env
+          fi
+      - name: Run integration tests via docker compose
+        run: |
+          set -euo pipefail
+          status=0
+          docker compose -f docker-compose.yml -f docker-compose.integration.yml up --build --exit-code-from integration-tests integration-tests || status=$?
+          docker compose -f docker-compose.yml -f docker-compose.integration.yml down -v
+          exit $status
