@@ -129,7 +129,7 @@ The repository also provides a Kubernetes deployment that mirrors the compose st
 #### Directory layout
 
 - `deploy/k8s/base` – Deployments, Services, PersistentVolumeClaims, ConfigMaps, and the `grafana-admin` Secret that together stand up Grafana, Loki, Tempo, Prometheus, the OpenTelemetry Collector, the FastAPI app, and the load generator.
-- `deploy/k8s/base/config` – Canonical configuration (Grafana provisioning, dashboards, Loki/Tempo/Prometheus configs, OTEL collector pipeline) mounted by docker-compose and injected into Kubernetes ConfigMaps.
+- `deploy/k8s/base/config` – Canonical configuration (Grafana provisioning, dashboards, Loki/Tempo/Prometheus configs, OTEL collector pipeline) mounted by docker-compose (shared prefix exported as `CONFIG_ROOT`) and injected into Kubernetes ConfigMaps.
 - `deploy/k8s/overlays/local` – Targets local development clusters. It swaps the app/load generator images to the locally built tags and disables image pulls, making it ideal for `kind`, `k3d`, or Minikube.
 - `deploy/k8s/overlays/production` – Provides templates for cloud clusters. It adds resource requests/limits, sets a sample storage class, promotes Grafana to a `LoadBalancer` Service, and defines placeholder Ingress objects for TLS termination.
 - `docs/k8s-manifests.md` – Deep dive into every manifest with links back to the official Kubernetes documentation for further reading.

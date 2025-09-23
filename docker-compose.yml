@@ -7,8 +7,8 @@ services:
     ports: ["3000:3000"]
     env_file: [.env]
     volumes:
-      - ./deploy/k8s/base/config/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./deploy/k8s/base/config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ${CONFIG_ROOT}/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ${CONFIG_ROOT}/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on: [prometheus, loki, tempo]
 
   loki:
@@ -17,7 +17,7 @@ services:
     command: ["-config.file=/etc/loki/config/loki-config.yml"]
     ports: ["3100:3100"]
     volumes:
-      - ./deploy/k8s/base/config/loki/loki-config.yml:/etc/loki/config/loki-config.yml:ro
+      - ${CONFIG_ROOT}/loki/loki-config.yml:/etc/loki/config/loki-config.yml:ro
       - loki-data:/loki
 
   tempo:
@@ -26,7 +26,7 @@ services:
     command: ["-config.file=/etc/tempo/config/tempo-config.yml"]
     ports: ["3200:3200"]
     volumes:
-      - ./deploy/k8s/base/config/tempo/tempo-config.yml:/etc/tempo/config/tempo-config.yml:ro
+      - ${CONFIG_ROOT}/tempo/tempo-config.yml:/etc/tempo/config/tempo-config.yml:ro
       - tempo-data:/var/tempo
 
   prometheus:
@@ -35,7 +35,7 @@ services:
     command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=1d"]
     ports: ["9090:9090"]
     volumes:
-      - ./deploy/k8s/base/config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${CONFIG_ROOT}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prom-data:/prometheus
 
   otelcol:
@@ -44,7 +44,7 @@ services:
     command: ["--config=/etc/otelcol/otelcol-config.yml"]
     ports: ["4317:4317", "4318:4318", "8889:8889"]
     volumes:
-      - ./deploy/k8s/base/config/otel-collector/otelcol-config.yml:/etc/otelcol/otelcol-config.yml:ro
+      - ${CONFIG_ROOT}/otel-collector/otelcol-config.yml:/etc/otelcol/otelcol-config.yml:ro
     depends_on: [loki, tempo]
 
   app:
