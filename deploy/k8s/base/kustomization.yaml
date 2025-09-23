@@ -9,24 +9,24 @@ generatorOptions:
 configMapGenerator:
   - name: grafana-provisioning
     files:
-      - files/grafana/provisioning/datasources/datasources.yml
-      - files/grafana/provisioning/alerting/alerts.yml
-      - files/grafana/provisioning/dashboards/dashboards.yml
+      - config/grafana/provisioning/datasources/datasources.yml
+      - config/grafana/provisioning/alerting/alerts.yml
+      - config/grafana/provisioning/dashboards/dashboards.yml
   - name: grafana-dashboards
     files:
-      - files/grafana/dashboards/otel_mvp.json
+      - config/grafana/dashboards/otel_mvp.json
   - name: loki-config
     files:
-      - files/loki/loki-config.yml
+      - config/loki/loki-config.yml
   - name: tempo-config
     files:
-      - files/tempo/tempo-config.yml
+      - config/tempo/tempo-config.yml
   - name: prometheus-config
     files:
-      - files/prometheus/prometheus.yml
+      - config/prometheus/prometheus.yml
   - name: otelcol-config
     files:
-      - files/otel-collector/otelcol-config.yml
+      - config/otel-collector/otelcol-config.yml
 
 secretGenerator:
   - name: grafana-admin

@@ -16,16 +16,16 @@ test: integration-test
 
 .PHONY: k8s-apply-local
 k8s-apply-local:
-	$(KUBECTL) apply -k k8s/overlays/local
+	$(KUBECTL) apply -k deploy/k8s/overlays/local
 
 .PHONY: k8s-delete-local
 k8s-delete-local:
-	$(KUBECTL) delete -k k8s/overlays/local
+	$(KUBECTL) delete -k deploy/k8s/overlays/local
 
 .PHONY: k8s-apply-production
 k8s-apply-production:
-	$(KUBECTL) apply -k k8s/overlays/production
+	$(KUBECTL) apply -k deploy/k8s/overlays/production
 
 .PHONY: k8s-delete-production
 k8s-delete-production:
-	$(KUBECTL) delete -k k8s/overlays/production
+	$(KUBECTL) delete -k deploy/k8s/overlays/production

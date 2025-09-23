@@ -124,14 +124,14 @@ This setup works with both Docker Compose and Podman Compose. Use `docker-compos
 
 ### Kubernetes via Kustomize
 
-The repository also provides a Kubernetes deployment that mirrors the compose stack. All manifests live under `k8s/` and are structured as a reusable base plus environment-specific overlays.
+The repository also provides a Kubernetes deployment that mirrors the compose stack. All manifests live under `deploy/k8s/` and are structured as a reusable base plus environment-specific overlays, while shared configuration lives in `deploy/k8s/base/config/` so both Kubernetes and docker-compose consume the same files.
 
 #### Directory layout
 
-- `k8s/base` – Deployments, Services, PersistentVolumeClaims, ConfigMaps, and the `grafana-admin` Secret that together stand up Grafana, Loki, Tempo, Prometheus, the OpenTelemetry Collector, the FastAPI app, and the load generator.
-- `k8s/base/files` – Checked-in copies of the configuration files used by compose. Keep these files in sync with the originals when you change Loki/Tempo/Prometheus/Grafana settings.
-- `k8s/overlays/local` – Targets local development clusters. It swaps the app/load generator images to the locally built tags and disables image pulls, making it ideal for `kind`, `k3d`, or Minikube.
-- `k8s/overlays/production` – Provides templates for cloud clusters. It adds resource requests/limits, sets a sample storage class, promotes Grafana to a `LoadBalancer` Service, and defines placeholder Ingress objects for TLS termination.
+- `deploy/k8s/base` – Deployments, Services, PersistentVolumeClaims, ConfigMaps, and the `grafana-admin` Secret that together stand up Grafana, Loki, Tempo, Prometheus, the OpenTelemetry Collector, the FastAPI app, and the load generator.
+- `deploy/k8s/base/config` – Canonical configuration (Grafana provisioning, dashboards, Loki/Tempo/Prometheus configs, OTEL collector pipeline) mounted by docker-compose and injected into Kubernetes ConfigMaps.
+- `deploy/k8s/overlays/local` – Targets local development clusters. It swaps the app/load generator images to the locally built tags and disables image pulls, making it ideal for `kind`, `k3d`, or Minikube.
+- `deploy/k8s/overlays/production` – Provides templates for cloud clusters. It adds resource requests/limits, sets a sample storage class, promotes Grafana to a `LoadBalancer` Service, and defines placeholder Ingress objects for TLS termination.
 - `docs/k8s-manifests.md` – Deep dive into every manifest with links back to the official Kubernetes documentation for further reading.
 
 #### Managing Grafana credentials
@@ -255,7 +255,7 @@ These steps were tested end-to-end on a macOS host using `kind` v0.26.0 and Podm
 
    ```bash
    make k8s-apply-local
-   # equivalent to: kubectl apply -k k8s/overlays/local
+   # equivalent to: kubectl apply -k deploy/k8s/overlays/local
    ```
 
 5. Wait for workloads to become ready:
@@ -280,7 +280,7 @@ These steps were tested end-to-end on a macOS host using `kind` v0.26.0 and Podm
 
 #### Production and cloud clusters (GKE, EKS, AKS, bare metal)
 
-1. Copy `k8s/overlays/production` and adjust it to match your infrastructure:
+1. Copy `deploy/k8s/overlays/production` and adjust it to match your infrastructure:
    - Update `patches/storage-class.yaml` with the correct `storageClassName` for your cluster.
    - Swap the annotations in `patches/grafana-service.yaml` for the load balancer you use (AWS, GCP, MetalLB, etc.).
    - Edit `ingress.yaml` with the hostnames/TLS secrets that your ingress controller expects.
@@ -290,7 +290,7 @@ These steps were tested end-to-end on a macOS host using `kind` v0.26.0 and Podm
 
    ```bash
    make k8s-apply-production
-   # or: kubectl apply -k k8s/overlays/production
+   # or: kubectl apply -k deploy/k8s/overlays/production
    ```
 
 4. Integrate the overlay with GitOps or CI pipelines as needed. The manifests are compatible with both `kubectl` and Argo CD/Flux.
@@ -302,8 +302,8 @@ To clean up the production overlay from a cluster, run `make k8s-delete-producti
 - Preview the rendered manifests before applying:
 
   ```bash
-  kubectl kustomize k8s/overlays/local | less
-  kubectl kustomize k8s/overlays/production | less
+  kubectl kustomize deploy/k8s/overlays/local | less
+  kubectl kustomize deploy/k8s/overlays/production | less
   ```
 
 - Check the health of the running stack:
@@ -313,7 +313,7 @@ To clean up the production overlay from a cluster, run `make k8s-delete-producti
   kubectl logs -n observability deploy/otelcol
   ```
 
-If you change any of the configuration files under `grafana/`, `otel-collector/`, `tempo/`, `loki/`, or `prometheus/`, copy the edits into `k8s/base/files` to keep the Kubernetes ConfigMaps aligned with the compose setup.
+If you change any of the configuration files under `deploy/k8s/base/config/`, both docker-compose and Kubernetes will pick up the updates. Keep the shared directory as the single source of truth for component configuration.
 
 ## Additional Notes
 
