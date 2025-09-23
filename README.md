@@ -179,22 +179,20 @@ These steps were tested end-to-end on a macOS host using `kind` v0.26.0 and Podm
 4. **Create the kind cluster**
 
    ```bash
-   # Docker Desktop
    kind create cluster --name otel-lgtm --wait 2m
-
-   # Podman provider
-   KIND_EXPERIMENTAL_PROVIDER=podman kind create cluster --name otel-lgtm --wait 2m
    ```
 
+   `kind` automatically detects Docker, Podman, or Nerdctl. If you want to force a specific runtime set `KIND_EXPERIMENTAL_PROVIDER=docker|podman|nerdctl` before running the command (see the [kind quick-start guide](https://kind.sigs.k8s.io/docs/user/quick-start/)).
+
 5. **Load the local images into the cluster**
-   - Docker Desktop can load images directly:
+   - When Docker is the active runtime, `kind load docker-image` works directly:
 
      ```bash
      kind load docker-image space-app:latest --name otel-lgtm
      kind load docker-image loadgen:latest --name otel-lgtm
      ```
 
-   - With Podman, tag the images for the Docker registry namespace and import an archive (workaround documented in the [kind Podman guide](https://kind.sigs.k8s.io/docs/user/rootless/)):
+   - With Podman rootless, push-style loading is not yet implemented, so tag the images for the Docker registry namespace and import an archive (workaround documented in the [kind Podman guide](https://kind.sigs.k8s.io/docs/user/rootless/)):
 
      ```bash
      podman tag space-app:latest docker.io/library/space-app:latest
