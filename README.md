@@ -48,12 +48,14 @@ flowchart LR
 
 ## Steps to Run Application
 
-### Prerequisites
+### Docker/Podman Compose
+
+#### Prerequisites
 
 - Docker and Docker Compose (or Podman and Podman Compose)
 - Git
 
-### Steps to Run
+#### Steps to Run
 
 This setup works with both Docker Compose and Podman Compose. Use `docker-compose` or `podman-compose` commands as appropriate for your environment.
 
@@ -119,6 +121,199 @@ This setup works with both Docker Compose and Podman Compose. Use `docker-compos
    # or
    podman-compose down
    ```
+
+### Kubernetes via Kustomize
+
+The repository also provides a Kubernetes deployment that mirrors the compose stack. All manifests live under `k8s/` and are structured as a reusable base plus environment-specific overlays.
+
+#### Directory layout
+
+- `k8s/base` – Deployments, Services, PersistentVolumeClaims, ConfigMaps, and the `grafana-admin` Secret that together stand up Grafana, Loki, Tempo, Prometheus, the OpenTelemetry Collector, the FastAPI app, and the load generator.
+- `k8s/base/files` – Checked-in copies of the configuration files used by compose. Keep these files in sync with the originals when you change Loki/Tempo/Prometheus/Grafana settings.
+- `k8s/overlays/local` – Targets local development clusters. It swaps the app/load generator images to the locally built tags and disables image pulls, making it ideal for `kind`, `k3d`, or Minikube.
+- `k8s/overlays/production` – Provides templates for cloud clusters. It adds resource requests/limits, sets a sample storage class, promotes Grafana to a `LoadBalancer` Service, and defines placeholder Ingress objects for TLS termination.
+- `docs/k8s-manifests.md` – Deep dive into every manifest with links back to the official Kubernetes documentation for further reading.
+
+#### Managing Grafana credentials
+
+The base manifest generates a `grafana-admin` Secret with the same admin/admin defaults as compose. Before deploying to a shared environment, replace it:
+
+```bash
+kubectl create secret generic grafana-admin \
+  --namespace observability \
+  --from-literal=GF_SECURITY_ADMIN_USER=your-admin \
+  --from-literal=GF_SECURITY_ADMIN_PASSWORD='strong-password' \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+You can also use `kustomize edit set secret --disable-name-suffix-hash grafana-admin ...` inside an overlay if you prefer the Secret to be managed declaratively.
+
+#### macOS quickstart (kind + Docker Desktop or Podman)
+
+These steps were tested end-to-end on a macOS host using `kind` v0.26.0 and Podman 5.5.2. Substitute Docker Desktop if that is your preferred container runtime.
+
+1. **Install prerequisites**
+   - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-macos/) for cluster interaction.
+   - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) to provision a local Kubernetes cluster in containers.
+   - Either [Docker Desktop](https://docs.docker.com/desktop/install/mac-install/) or [Podman Desktop](https://podman.io/docs/installation#macos) as the container engine. When using Podman, make sure `podman machine` is running (`podman machine start`).
+
+2. **Clone the repository and move into it**
+
+   ```bash
+   git clone https://github.com/hyzhak/otel-lgtm-mvp.git
+   cd otel-lgtm-mvp
+   ```
+
+3. **Build the demo images**
+
+   ```bash
+   # Docker Desktop
+   docker build -t space-app:latest app
+   docker build -t loadgen:latest loadgen
+
+   # Podman (tested)
+   podman build -t space-app:latest app
+   podman build -t loadgen:latest loadgen
+   ```
+
+4. **Create the kind cluster**
+
+   ```bash
+   kind create cluster --name otel-lgtm --wait 2m
+   ```
+
+   `kind` automatically detects Docker, Podman, or Nerdctl. If you want to force a specific runtime set `KIND_EXPERIMENTAL_PROVIDER=docker|podman|nerdctl` before running the command (see the [kind quick-start guide](https://kind.sigs.k8s.io/docs/user/quick-start/)).
+
+5. **Load the local images into the cluster**
+   - When Docker is the active runtime, `kind load docker-image` works directly:
+
+     ```bash
+     kind load docker-image space-app:latest --name otel-lgtm
+     kind load docker-image loadgen:latest --name otel-lgtm
+     ```
+
+   - With Podman rootless, push-style loading is not yet implemented, so tag the images for the Docker registry namespace and import an archive (workaround documented in the [kind Podman guide](https://kind.sigs.k8s.io/docs/user/rootless/)):
+
+     ```bash
+     podman tag space-app:latest docker.io/library/space-app:latest
+     podman tag loadgen:latest docker.io/library/loadgen:latest
+     podman save --format docker-archive -o space-app.tar docker.io/library/space-app:latest
+     podman save --format docker-archive -o loadgen.tar docker.io/library/loadgen:latest
+     KIND_EXPERIMENTAL_PROVIDER=podman kind load image-archive space-app.tar --name otel-lgtm
+     KIND_EXPERIMENTAL_PROVIDER=podman kind load image-archive loadgen.tar --name otel-lgtm
+     ```
+
+6. **Deploy the stack**
+
+   ```bash
+   make k8s-apply-local
+   kubectl wait --namespace observability --for=condition=Available deployment --all --timeout=5m
+   ```
+
+7. **Access the services**
+   - Forward ports from the cluster and open the dashboards locally:
+
+     ```bash
+     kubectl port-forward -n observability svc/grafana 3000:3000
+     kubectl port-forward -n observability svc/space-app 8000:8000
+     ```
+
+   - Visit `http://localhost:3000` (Grafana) and `http://localhost:8000` (FastAPI). You can also run `open http://localhost:3000` on macOS.
+
+8. **Clean up**
+
+   ```bash
+   make k8s-delete-local
+   # Docker Desktop
+   kind delete cluster --name otel-lgtm
+   # Podman provider
+   KIND_EXPERIMENTAL_PROVIDER=podman kind delete cluster --name otel-lgtm
+   rm -f space-app.tar loadgen.tar  # remove the temporary archives if you created them
+   ```
+
+#### Local clusters (kind, k3d, Minikube)
+
+1. Install `kubectl` and a local Kubernetes distribution (`kind`, `k3d`, or `minikube`).
+2. Build the application images and tag them as expected by the overlay:
+
+   ```bash
+   docker build -t space-app:latest app
+   docker build -t loadgen:latest loadgen
+   ```
+
+3. Load the images into your cluster (examples shown for `kind` and Minikube):
+
+   ```bash
+   kind load docker-image space-app:latest
+   kind load docker-image loadgen:latest
+   # or for Minikube
+   minikube image load space-app:latest
+   minikube image load loadgen:latest
+   ```
+
+4. Apply the manifests:
+
+   ```bash
+   make k8s-apply-local
+   # equivalent to: kubectl apply -k k8s/overlays/local
+   ```
+
+5. Wait for workloads to become ready:
+
+   ```bash
+   kubectl get pods -n observability
+   ```
+
+6. Port-forward to reach the services from your workstation:
+
+   ```bash
+   kubectl port-forward -n observability svc/grafana 3000:3000
+   kubectl port-forward -n observability svc/space-app 8000:8000
+   kubectl port-forward -n observability svc/prometheus 9090:9090
+   ```
+
+7. Tear the stack down when finished:
+
+   ```bash
+   make k8s-delete-local
+   ```
+
+#### Production and cloud clusters (GKE, EKS, AKS, bare metal)
+
+1. Copy `k8s/overlays/production` and adjust it to match your infrastructure:
+   - Update `patches/storage-class.yaml` with the correct `storageClassName` for your cluster.
+   - Swap the annotations in `patches/grafana-service.yaml` for the load balancer you use (AWS, GCP, MetalLB, etc.).
+   - Edit `ingress.yaml` with the hostnames/TLS secrets that your ingress controller expects.
+   - Override the container images to point at the registry where you publish the FastAPI app and load generator (for example via `kustomize edit set image`).
+2. Rotate the Grafana admin credentials as shown above or manage them through your preferred secret store.
+3. Deploy with:
+
+   ```bash
+   make k8s-apply-production
+   # or: kubectl apply -k k8s/overlays/production
+   ```
+
+4. Integrate the overlay with GitOps or CI pipelines as needed. The manifests are compatible with both `kubectl` and Argo CD/Flux.
+
+To clean up the production overlay from a cluster, run `make k8s-delete-production`.
+
+#### Helpful commands
+
+- Preview the rendered manifests before applying:
+
+  ```bash
+  kubectl kustomize k8s/overlays/local | less
+  kubectl kustomize k8s/overlays/production | less
+  ```
+
+- Check the health of the running stack:
+
+  ```bash
+  kubectl get pods,svc,pvc -n observability
+  kubectl logs -n observability deploy/otelcol
+  ```
+
+If you change any of the configuration files under `grafana/`, `otel-collector/`, `tempo/`, `loki/`, or `prometheus/`, copy the edits into `k8s/base/files` to keep the Kubernetes ConfigMaps aligned with the compose setup.
 
 ## Additional Notes
 

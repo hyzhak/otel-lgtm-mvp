@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 39,
+  "title": "OTel MVP – Logs • Traces • Metrics",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Requests /s",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(app_requests_total[1m]))",
+          "legendFormat": "req/s"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency p95 (ms)",
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "histogram_quantile(0.95, sum(rate(app_request_duration_ms_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Errors /min",
+      "gridPos": {"x": 0, "y": 8, "w": 6, "h": 6},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(app_request_errors_total[1m])) * 60"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Logs (space-app)",
+      "gridPos": {"x": 6, "y": 8, "w": 18, "h": 12},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {"expr": "{service_name=\"space-app\"}"}
+      ]
+    }
+  ],
+  "time": {"from": "now-2h", "to": "now"}
+}

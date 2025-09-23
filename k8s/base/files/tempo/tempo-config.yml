@@ -1,0 +1,63 @@
+stream_over_http_enabled: true # Enables streaming traces over HTTP for better performance in high-throughput scenarios (in production evaluate grpc vs http and enable TLS/auth)
+
+server:
+  http_listen_port: 3200 # Tempo HTTP port for queries and ingestion (change if exposing externally; bind/port should follow infra policies)
+  log_level: info
+
+distributor:
+  receivers:
+    otlp: # Receives OTLP traces from collectors/agents (prefer grpc for high volume; secure endpoints in prod)
+      protocols:
+        grpc:
+          endpoint: "tempo:4317" # default gRPC OTLP port; use TLS/auth in production
+        http:
+          endpoint: "tempo:4318" # HTTP OTLP endpoint; disable if not used to reduce attack surface
+
+storage:
+  trace:
+    backend: local # Uses local filesystem for trace storage (demo). For production prefer object storage (s3/gcs/azure) for scalability and durability.
+    wal:
+      path: /var/tempo/wal # Write-ahead log for durability (ensure proper disk provisioning and rotation in prod)
+    local:
+      path: /var/tempo/blocks # Local storage path for trace blocks (demo). In production use cloud/remote block storage.
+
+
+ingester:
+  max_block_duration: 5m # Cuts blocks every 5m for demo (production typically uses much longer, e.g., 1h+ to reduce compaction overhead)
+
+compactor:
+  compaction:
+    block_retention: 24h # Retains traces for 24h in demo. Set retention in production according to compliance/SLAs (days->months) and storage costs.
+
+query_frontend:
+  search: # SLOs for query performance – tune per workload to meet latency/throughput targets
+    duration_slo: 5s
+    throughput_bytes_slo: 1.073741824e+09
+    metadata_slo:
+      duration_slo: 5s
+      throughput_bytes_slo: 1.073741824e+09
+  trace_by_id:
+    duration_slo: 5s # Query-by-ID latency SLO (adjust lower in production for faster lookups)
+
+metrics_generator:
+  registry:
+    external_labels: # Labels attached to generated metrics (use meaningful cluster/service labels in prod)
+      source: tempo
+      cluster: demo
+  storage:
+    path: /var/tempo/generator/wal
+    remote_write: # Sends generated metrics to Prometheus via remote_write (ensure correct Prometheus URL and auth in prod)
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
+  traces_storage:
+    path: /var/tempo/generator/traces
+
+memberlist:
+  join_members: # Clustering for distributed setup; update with real peers/advertise_address and secure configs in production
+    - tempo:7946
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [service-graphs, span-metrics, local-blocks] # Enables service-graphs, span-metrics, local-blocks (these increase CPU/memory; enable selectively in prod)
+      generate_native_histograms: both

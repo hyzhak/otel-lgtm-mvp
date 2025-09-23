@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 COMPOSE ?= docker compose
 COMPOSE_FILES := -f docker-compose.yml -f docker-compose.integration.yml
+KUBECTL ?= kubectl
 
 .PHONY: integration-test
 integration-test:
@@ -12,3 +13,19 @@ integration-test:
 
 .PHONY: test
 test: integration-test
+
+.PHONY: k8s-apply-local
+k8s-apply-local:
+	$(KUBECTL) apply -k k8s/overlays/local
+
+.PHONY: k8s-delete-local
+k8s-delete-local:
+	$(KUBECTL) delete -k k8s/overlays/local
+
+.PHONY: k8s-apply-production
+k8s-apply-production:
+	$(KUBECTL) apply -k k8s/overlays/production
+
+.PHONY: k8s-delete-production
+k8s-delete-production:
+	$(KUBECTL) delete -k k8s/overlays/production
