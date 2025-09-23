@@ -44,9 +44,9 @@ jobs:
 
       - name: Deploy observability stack to kind
         run: |
-          kubectl kustomize k8s/base >/dev/null
-          kubectl kustomize k8s/overlays/local >/dev/null
-          kubectl apply -k k8s/overlays/local
+          kubectl kustomize deploy/k8s/base >/dev/null
+          kubectl kustomize deploy/k8s/overlays/local >/dev/null
+          kubectl apply -k deploy/k8s/overlays/local
 
       - name: Wait for deployments to become ready
         run: |
@@ -72,4 +72,4 @@ jobs:
       - name: Tear down stack
         if: always()
         run: |
-          kubectl delete -k k8s/overlays/local
+          kubectl delete -k deploy/k8s/overlays/local
