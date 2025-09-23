@@ -132,6 +132,7 @@ The repository also provides a Kubernetes deployment that mirrors the compose st
 - `k8s/base/files` – Checked-in copies of the configuration files used by compose. Keep these files in sync with the originals when you change Loki/Tempo/Prometheus/Grafana settings.
 - `k8s/overlays/local` – Targets local development clusters. It swaps the app/load generator images to the locally built tags and disables image pulls, making it ideal for `kind`, `k3d`, or Minikube.
 - `k8s/overlays/production` – Provides templates for cloud clusters. It adds resource requests/limits, sets a sample storage class, promotes Grafana to a `LoadBalancer` Service, and defines placeholder Ingress objects for TLS termination.
+- `docs/k8s-manifests.md` – Deep dive into every manifest with links back to the official Kubernetes documentation for further reading.
 
 #### Managing Grafana credentials
 
@@ -146,6 +147,91 @@ kubectl create secret generic grafana-admin \
 ```
 
 You can also use `kustomize edit set secret --disable-name-suffix-hash grafana-admin ...` inside an overlay if you prefer the Secret to be managed declaratively.
+
+#### macOS quickstart (kind + Docker Desktop or Podman)
+
+These steps were tested end-to-end on a macOS host using `kind` v0.26.0 and Podman 5.5.2. Substitute Docker Desktop if that is your preferred container runtime.
+
+1. **Install prerequisites**
+   - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-macos/) for cluster interaction.
+   - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) to provision a local Kubernetes cluster in containers.
+   - Either [Docker Desktop](https://docs.docker.com/desktop/install/mac-install/) or [Podman Desktop](https://podman.io/docs/installation#macos) as the container engine. When using Podman, make sure `podman machine` is running (`podman machine start`).
+
+2. **Clone the repository and move into it**
+
+   ```bash
+   git clone https://github.com/hyzhak/otel-lgtm-mvp.git
+   cd otel-lgtm-mvp
+   ```
+
+3. **Build the demo images**
+
+   ```bash
+   # Docker Desktop
+   docker build -t space-app:latest app
+   docker build -t loadgen:latest loadgen
+
+   # Podman (tested)
+   podman build -t space-app:latest app
+   podman build -t loadgen:latest loadgen
+   ```
+
+4. **Create the kind cluster**
+
+   ```bash
+   # Docker Desktop
+   kind create cluster --name otel-lgtm --wait 2m
+
+   # Podman provider
+   KIND_EXPERIMENTAL_PROVIDER=podman kind create cluster --name otel-lgtm --wait 2m
+   ```
+
+5. **Load the local images into the cluster**
+   - Docker Desktop can load images directly:
+
+     ```bash
+     kind load docker-image space-app:latest --name otel-lgtm
+     kind load docker-image loadgen:latest --name otel-lgtm
+     ```
+
+   - With Podman, tag the images for the Docker registry namespace and import an archive (workaround documented in the [kind Podman guide](https://kind.sigs.k8s.io/docs/user/rootless/)):
+
+     ```bash
+     podman tag space-app:latest docker.io/library/space-app:latest
+     podman tag loadgen:latest docker.io/library/loadgen:latest
+     podman save --format docker-archive -o space-app.tar docker.io/library/space-app:latest
+     podman save --format docker-archive -o loadgen.tar docker.io/library/loadgen:latest
+     KIND_EXPERIMENTAL_PROVIDER=podman kind load image-archive space-app.tar --name otel-lgtm
+     KIND_EXPERIMENTAL_PROVIDER=podman kind load image-archive loadgen.tar --name otel-lgtm
+     ```
+
+6. **Deploy the stack**
+
+   ```bash
+   make k8s-apply-local
+   kubectl wait --namespace observability --for=condition=Available deployment --all --timeout=5m
+   ```
+
+7. **Access the services**
+   - Forward ports from the cluster and open the dashboards locally:
+
+     ```bash
+     kubectl port-forward -n observability svc/grafana 3000:3000
+     kubectl port-forward -n observability svc/space-app 8000:8000
+     ```
+
+   - Visit `http://localhost:3000` (Grafana) and `http://localhost:8000` (FastAPI). You can also run `open http://localhost:3000` on macOS.
+
+8. **Clean up**
+
+   ```bash
+   make k8s-delete-local
+   # Docker Desktop
+   kind delete cluster --name otel-lgtm
+   # Podman provider
+   KIND_EXPERIMENTAL_PROVIDER=podman kind delete cluster --name otel-lgtm
+   rm -f space-app.tar loadgen.tar  # remove the temporary archives if you created them
+   ```
 
 #### Local clusters (kind, k3d, Minikube)
 
