@@ -231,6 +231,24 @@ These steps were tested end-to-end on a macOS host using `kind` v0.26.0 and Podm
    rm -f space-app.tar loadgen.tar  # remove the temporary archives if you created them
    ```
 
+#### Development convenience script
+
+Spin up a kind-backed cluster, build/load the demo images, and apply the local overlay in one step:
+
+```bash
+./scripts/start_k8s_dev_stack.sh
+```
+
+Key environment variables:
+
+- `CLUSTER_NAME` (default `otel-lgtm-dev`) chooses or creates the target kind cluster.
+- `SKIP_BUILD=1` / `SKIP_LOAD=1` reuse existing images instead of rebuilding or loading.
+- `RESET_STACK=1` deletes the overlay before reapplying it.
+- `DOCKER_CONFIG_DIR` points to an alternative Docker config (useful on macOS to bypass Keychain helpers).
+- `KUBECONFIG_PATH` stores the generated kubeconfig somewhere other than `~/.kube/config` (handy when write access is restricted).
+
+After the script reports success, follow the printed commands to port-forward Grafana or the application. When finished, remove the stack with `kubectl delete -k deploy/k8s/overlays/local` and delete the cluster with `kind delete cluster --name <name>` if desired.
+
 #### Local clusters (kind, k3d, Minikube)
 
 1. Install `kubectl` and a local Kubernetes distribution (`kind`, `k3d`, or `minikube`).
@@ -315,6 +333,58 @@ To clean up the production overlay from a cluster, run `make k8s-delete-producti
 
 If you change any of the configuration files under `deploy/k8s/base/config/`, both docker-compose and Kubernetes will pick up the updates. Keep the shared directory as the single source of truth for component configuration.
 
+#### Running Kubernetes integration tests
+
+The docker-compose integration suite can now run inside the cluster to validate the Kubernetes deployment end-to-end.
+
+1. Build and load the images that the local overlay expects:
+
+   ```bash
+   docker build -t space-app:latest app
+   docker build -t loadgen:latest loadgen
+   docker build -t integration-tests:latest -f tests/integration/Dockerfile .
+   kind load docker-image space-app:latest --name otel-lgtm
+   kind load docker-image loadgen:latest --name otel-lgtm
+   kind load docker-image integration-tests:latest --name otel-lgtm
+   ```
+
+2. Apply the local overlay (or ensure it is already running):
+
+   ```bash
+   make k8s-apply-local
+   kubectl wait --namespace observability --for=condition=Available deployment --all --timeout=5m
+   ```
+
+3. Launch the Job that executes the tests inside the `observability` namespace:
+
+   ```bash
+   make k8s-integration-test
+   ```
+
+   The helper script behind this target streams the Job logs and cleans up the resources automatically. Override `WAIT_TIMEOUT`, `NAMESPACE`, or `JOB_NAME` when calling the script directly (e.g. `WAIT_TIMEOUT=15m ./scripts/run_k8s_integration_tests.sh`) to customise behaviour on slower clusters.
+
+4. Tear the stack down when finished:
+
+   ```bash
+   make k8s-delete-local
+   kind delete cluster --name otel-lgtm
+   ```
+
+When the tests fail, the script captures Kubernetes diagnostics (pod status, Job description, and latest pod logs) before exiting. Because the integration assertions reuse the same image and code as the compose workflow, failures indicate either cluster readiness problems or behavioural differences between the deployments.
+
+##### Fully automated option
+
+```bash
+./scripts/run_k8s_integration_tests_full.sh
+```
+
+The script builds the demo and test images, spins up a temporary kind cluster (if needed), loads the images, applies the local overlay, runs the Job, and cleans everything up. Useful environment variables:
+
+- `DOCKER`, `KIND`, `KUBECTL`: override the binaries that are executed.
+- `DOCKER_CONFIG_DIR`: point at a specific Docker config directory (set this on macOS to bypass Keychain helpers).
+- `KEEP_CLUSTER=1` / `KEEP_STACK=1`: keep the kind cluster and/or deployed resources after the run.
+- `WAIT_DEPLOY_TIMEOUT`, `WAIT_JOB_TIMEOUT`: adjust the deployment and Job wait ceilings (defaults `5m` and `15m`).
+
 ## Additional Notes
 
 - The load generator service will automatically start generating traffic to the FastAPI application
@@ -324,6 +394,14 @@ If you change any of the configuration files under `deploy/k8s/base/config/`, bo
 ## Integration Tests
 
 These end-to-end tests bring up the full docker-compose stack, exercise the FastAPI demo service, and assert that traces, metrics, and logs flow into Tempo, Prometheus, and Loki respectively.
+
+### One-step helper
+
+```bash
+./scripts/run_compose_integration_tests.sh
+```
+
+The script wraps the compose workflow, builds fresh images, and tears the stack down automatically. Set `COMPOSE` if you prefer a different binary (for example `COMPOSE="docker-compose"`) and `DOCKER_CONFIG_DIR` when you need to point at a custom Docker configuration (handy on macOS to bypass credential helpers).
 
 ### Quick start
 

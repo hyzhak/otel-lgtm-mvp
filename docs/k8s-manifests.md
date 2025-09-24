@@ -105,7 +105,20 @@ The `Makefile` exposes the most common commands:
 
 - `make k8s-apply-local` / `make k8s-delete-local`
 - `make k8s-apply-production` / `make k8s-delete-production`
+- `make k8s-integration-test`
+
+For day-to-day development you can also run `./scripts/start_k8s_dev_stack.sh` to create a kind cluster, build/load the demo images, and apply the local overlay automatically.
 
 Each target wraps the corresponding `kubectl apply -k` or `kubectl delete -k` command described in the [kustomize CLI reference](https://kubectl.docs.kubernetes.io/references/kustomize/kustomize/).
 
 Use `kubectl kustomize deploy/k8s/overlays/<name>` to preview changes before applying them. When you modify service configuration files, update the copies under `deploy/k8s/base/config/` so both docker-compose and Kubernetes stay in sync.
+
+## Integration tests inside Kubernetes
+
+The docker-compose integration suite can run as a Kubernetes Job using the manifests in `deploy/k8s/tests/`:
+
+1. Build the FastAPI app, load generator, and integration test images locally, then load them into your cluster (`kind load docker-image ...` for kind, `minikube image load ...` for Minikube, and so on).
+2. Apply the desired overlay (for development the `local` overlay is recommended) and wait for all deployments to be available: `kubectl wait -n observability --for=condition=Available deployment --all --timeout=5m`.
+3. Execute `make k8s-integration-test` to create the `integration-tests` Job. The helper script waits for completion, prints the test logs, and cleans up the Job automatically. Override `WAIT_TIMEOUT`, `NAMESPACE`, or `KUSTOMIZE_PATH` when invoking `scripts/run_k8s_integration_tests.sh` directly if you need custom behaviour.
+
+The Job uses the same Python test image as the compose workflow, so failures point to configuration problems or readiness issues in the Kubernetes deployment rather than test drift.

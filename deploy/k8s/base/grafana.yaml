@@ -74,6 +74,13 @@ spec:
         - name: grafana-provisioning
           configMap:
             name: grafana-provisioning
+            items:
+              - key: alerts.yml
+                path: alerting/alerts.yml
+              - key: dashboards.yml
+                path: dashboards/dashboards.yml
+              - key: datasources.yml
+                path: datasources/datasources.yml
         - name: grafana-dashboards
           configMap:
             name: grafana-dashboards

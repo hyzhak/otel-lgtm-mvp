@@ -41,6 +41,10 @@ spec:
           ports:
             - containerPort: 3200
               name: http
+            - containerPort: 4317
+              name: otlp-grpc
+            - containerPort: 4318
+              name: otlp-http
           volumeMounts:
             - name: tempo-config
               mountPath: /etc/tempo/config
@@ -71,3 +75,9 @@ spec:
     - name: http
       port: 3200
       targetPort: http
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317

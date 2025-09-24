@@ -9,9 +9,9 @@ distributor:
     otlp: # Receives OTLP traces from collectors/agents (prefer grpc for high volume; secure endpoints in prod)
       protocols:
         grpc:
-          endpoint: "tempo:4317" # default gRPC OTLP port; use TLS/auth in production
+          endpoint: "0.0.0.0:4317" # bind to pod IP so it works with both Kubernetes Services and compose networks
         http:
-          endpoint: "tempo:4318" # HTTP OTLP endpoint; disable if not used to reduce attack surface
+          endpoint: "0.0.0.0:4318" # ditto for HTTP OTLP; keep accessible within the cluster only
 
 storage:
   trace:
