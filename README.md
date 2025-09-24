@@ -13,38 +13,15 @@ The stack includes:
 
 The core application is a FastAPI service that generates sample telemetry data, simulating real-world observability scenarios.
 
-## High-Level Design Document
+## Documentation
 
-### Architecture Overview
+- [High-Level Design](docs/high-level-design.md) – Architecture, deployment views, and sequence diagrams that explain how telemetry moves through the stack.
+- [Lessons Learned and Replication Guide](docs/lessons-learned.md) – Step-by-step playbook for recreating the MVP architecture and avoiding common pitfalls.
+- [Kubernetes Manifests Deep Dive](docs/k8s-manifests.md) – Reference for every manifest, configuration file, and overlay.
 
-The system follows a microservices architecture with the following components:
+## Architecture Summary
 
-- **Application (FastAPI)**: The main service instrumented with OpenTelemetry for automatic generation of traces, metrics, and logs
-- **OpenTelemetry Collector**: Receives OTLP (OpenTelemetry Protocol) data from the application and routes it to appropriate backends
-- **Backends**:
-  - **Prometheus**: Stores and serves metrics data
-  - **Tempo**: Stores and queries distributed traces
-  - **Loki**: Aggregates and indexes log data
-- **Visualization**: Grafana provides unified dashboards for all telemetry data
-- **Load Generator**: A separate service that simulates traffic to the FastAPI application
-
-### Data Flow
-
-```mermaid
-flowchart LR
-    A[Application<br/>FastAPI] --> B[OpenTelemetry<br/>Collector]
-    B --> C[Prometheus<br/>Metrics]
-    B --> D[Tempo<br/>Traces]
-    B --> E[Loki<br/>Logs]
-    C --> F[Grafana<br/>Visualization]
-    D --> F
-    E --> F
-```
-
-1. The FastAPI application generates telemetry data through OpenTelemetry instrumentation
-2. Data is sent via OTLP to the OpenTelemetry Collector
-3. The Collector processes and routes data to respective backends
-4. Grafana queries all backends to create comprehensive dashboards
+The MVP instruments a FastAPI service (`app/main.py`) with OpenTelemetry, exports traces, metrics, and logs via OTLP, and funnels them through an OpenTelemetry Collector that distributes each signal type to the LGTM backends (Loki, Grafana Tempo, and Prometheus). Grafana aggregates the data sources so developers can correlate logs, metrics, and traces in a single dashboard experience, while a lightweight load generator (`loadgen/loadgen.py`) keeps the telemetry pipeline active for demos and tests.【F:app/main.py†L24-L118】【F:deploy/k8s/base/config/otel-collector/otelcol-config.yml†L1-L38】【F:loadgen/loadgen.py†L1-L25】
 
 ## Steps to Run Application
 
