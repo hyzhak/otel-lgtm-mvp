@@ -8,10 +8,10 @@ resources:
 
 images:
   - name: ghcr.io/hyzhak/otel-lgtm-mvp/space-app
-    newName: space-app
+    newName: localhost/space-app
     newTag: latest
   - name: ghcr.io/hyzhak/otel-lgtm-mvp/loadgen
-    newName: loadgen
+    newName: localhost/loadgen
     newTag: latest
 
 patches:

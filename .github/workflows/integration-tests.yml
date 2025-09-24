@@ -23,7 +23,7 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.integration.yml down -v
           exit $status
 
-  k8s-smoke:
+  k8s-integration:
     runs-on: ubuntu-latest
     needs: integration
     steps:
@@ -37,10 +37,15 @@ jobs:
 
       - name: Build demo images for local overlay
         run: |
-          docker build -t space-app:latest app
-          docker build -t loadgen:latest loadgen
-          kind load docker-image space-app:latest --name otel-lgtm
-          kind load docker-image loadgen:latest --name otel-lgtm
+          docker build -t localhost/space-app:latest app
+          docker build -t localhost/loadgen:latest loadgen
+          kind load docker-image localhost/space-app:latest --name otel-lgtm
+          kind load docker-image localhost/loadgen:latest --name otel-lgtm
+
+      - name: Build integration test image
+        run: |
+          docker build -t localhost/integration-tests:latest -f tests/integration/Dockerfile .
+          kind load docker-image localhost/integration-tests:latest --name otel-lgtm
 
       - name: Deploy observability stack to kind
         run: |
@@ -52,22 +57,18 @@ jobs:
         run: |
           kubectl wait --namespace observability --for=condition=Available deployment --all --timeout=5m
 
-      - name: Smoke test FastAPI service
+      - name: Run Kubernetes integration tests
         run: |
           set -euo pipefail
-          kubectl run curl --namespace observability --restart=Never --image=curlimages/curl:8.5.0 --command -- curl -fsS http://space-app:8000/ || {
-            kubectl logs --namespace observability deploy/space-app || true
-            kubectl logs --namespace observability deploy/otelcol || true
-            exit 1
-          }
-          kubectl delete pod curl --namespace observability --wait=true
+          WAIT_TIMEOUT=15m ./scripts/run_k8s_integration_tests.sh
 
       - name: Collect diagnostics on failure
         if: failure()
         run: |
           kubectl get pods -n observability
           kubectl describe pods -n observability
-          kubectl logs -n observability deploy/otelcol
+          kubectl logs -n observability deploy/otelcol || true
+          kubectl logs -n observability job/integration-tests || true
 
       - name: Tear down stack
         if: always()

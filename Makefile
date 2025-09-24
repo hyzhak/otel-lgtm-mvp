@@ -29,3 +29,7 @@ k8s-apply-production:
 .PHONY: k8s-delete-production
 k8s-delete-production:
 	$(KUBECTL) delete -k deploy/k8s/overlays/production
+
+.PHONY: k8s-integration-test
+k8s-integration-test:
+	./scripts/run_k8s_integration_tests.sh
