@@ -37,15 +37,15 @@ jobs:
 
       - name: Build demo images for local overlay
         run: |
-          docker build -t space-app:latest app
-          docker build -t loadgen:latest loadgen
-          kind load docker-image space-app:latest --name otel-lgtm
-          kind load docker-image loadgen:latest --name otel-lgtm
+          docker build -t localhost/space-app:latest app
+          docker build -t localhost/loadgen:latest loadgen
+          kind load docker-image localhost/space-app:latest --name otel-lgtm
+          kind load docker-image localhost/loadgen:latest --name otel-lgtm
 
       - name: Build integration test image
         run: |
-          docker build -t integration-tests:latest -f tests/integration/Dockerfile .
-          kind load docker-image integration-tests:latest --name otel-lgtm
+          docker build -t localhost/integration-tests:latest -f tests/integration/Dockerfile .
+          kind load docker-image localhost/integration-tests:latest --name otel-lgtm
 
       - name: Deploy observability stack to kind
         run: |
